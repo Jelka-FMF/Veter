@@ -3,15 +3,22 @@ use std::sync::Arc;
 use tokio::sync::broadcast;
 use warp::Filter;
 
-use crate::utils;
+use crate::utils::{StreamReceiverExt, StreamTransmitterExt, subprotocol_auth};
 
-pub fn state_routes()
--> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone + Send {
+pub fn state_routes(
+    token: Arc<String>,
+) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone + Send {
     let (channel, _) = broadcast::channel::<String>(16);
     let channel = Arc::new(channel);
 
-    let sender = utils::stream_sender(warp::path!("state" / "stream"), channel.clone());
-    let receiver = utils::stream_receiver(warp::path!("state" / "push"), channel.clone());
+    let transmitter = warp::path!("state" / "stream")
+        .and_transmit_stream(channel.clone())
+        .with(warp::trace::named("state-transmitter"));
 
-    sender.or(receiver)
+    let receiver = warp::path!("state" / "push")
+        .and(subprotocol_auth(token))
+        .and_receive_stream(channel.clone())
+        .with(warp::trace::named("state-receiver"));
+
+    transmitter.or(receiver)
 }

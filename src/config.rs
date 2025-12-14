@@ -1,4 +1,5 @@
 use std::net::{IpAddr, Ipv4Addr};
+use std::sync::Arc;
 
 use config::Environment;
 use serde::{Deserialize, Serialize};
@@ -10,6 +11,8 @@ pub struct Config {
 
     #[serde(default = "default_port")]
     pub port: u16,
+
+    pub token: Arc<String>,
 }
 
 fn default_address() -> IpAddr {
