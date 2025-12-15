@@ -1,0 +1,71 @@
+name: Rust CI
+
+on:
+  - push
+  - pull_request
+
+jobs:
+  rustfmt:
+    name: Rustfmt
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust and Rustfmt
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: nightly
+          components: rustfmt
+          cache: false
+          rustflags: ''
+
+      - name: Configure Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+          cache-all-crates: true
+
+      - name: Run Rustfmt
+        run: cargo fmt --all -- --check
+
+  clippy:
+    name: Clippy (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+
+    permissions:
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+          - os: windows-latest
+          - os: macos-latest
+
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust and Clippy
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: clippy
+          cache: false
+          rustflags: ''
+
+      - name: Configure Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+          cache-all-crates: true
+
+
+      - name: Run Clippy
+        run: cargo clippy
