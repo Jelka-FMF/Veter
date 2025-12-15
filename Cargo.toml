@@ -1,6 +1,6 @@
 [package]
 name = "veter"
-description = "Service for interaction between Jelka FMF components"
+description = "Service for communication between Jelka FMF components"
 authors = ["Programerski klub FMF"]
 repository = "https://github.com/Jelka-FMF/Veter"
 license = "GPL-3.0-or-later"

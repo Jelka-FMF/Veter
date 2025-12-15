@@ -6,6 +6,7 @@ use tokio_stream::once;
 use tokio_stream::wrappers::BroadcastStream;
 use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
 use warp::Filter;
+use warp::http::Method;
 use warp::sse::Event;
 use warp::ws::Ws;
 
@@ -113,6 +114,10 @@ pub fn subprotocol_auth(
     let expected = format!("auth-{}", token);
 
     header_auth(header, expected)
+}
+
+pub fn cors_any_origin() -> warp::cors::Builder {
+    warp::cors().allow_methods(&[Method::GET]).allow_any_origin()
 }
 
 pub async fn rejection_handler(
