@@ -2,9 +2,11 @@ use tracing_subscriber::fmt::format::FmtSpan;
 use warp::Filter;
 
 use crate::config::Config;
+use crate::metrics::init_metrics;
 use crate::utils::rejection_handler;
 
 mod config;
+mod metrics;
 mod routes;
 mod utils;
 
@@ -13,6 +15,8 @@ async fn main() {
     tracing_subscriber::fmt().with_span_events(FmtSpan::CLOSE).init();
 
     let config = Config::new().expect("failed to load configuration");
+
+    init_metrics();
 
     let base_routes = routes::base_routes();
     let state_routes = routes::state_routes(config.token.clone());
