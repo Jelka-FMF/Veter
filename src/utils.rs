@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use futures_util::StreamExt;
 use tokio::sync::broadcast::Sender;
-use tokio_stream::once;
 use tokio_stream::wrappers::BroadcastStream;
 use tokio_stream::wrappers::errors::BroadcastStreamRecvError;
 use warp::Filter;
@@ -45,40 +44,64 @@ impl<F: Filter<Extract = (), Error = warp::Rejection> + Clone + Send> StreamTran
             // Subscribe to the broadcast channel
             let receiver = channel.subscribe();
 
+            // Track active SSE connections
+            let _guard = ConnectionGuard::new(name, ConnectionActor::Subscriber);
+
+            // Cache metric instances to avoid repeated label lookups
+            let sent_counter = CHANNEL_MESSAGES_SENT_TOTAL.with_label_values(&[name]);
+            let lag_events_counter = CHANNEL_CLIENT_LAG_EVENTS_TOTAL.with_label_values(&[name]);
+            let lag_messages_counter = CHANNEL_CLIENT_LAG_MESSAGES_TOTAL.with_label_values(&[name]);
+
+            // Bundle state for the stream processor
+            struct State {
+                broadcast: BroadcastStream<String>,
+                sent_counter: prometheus::core::GenericCounter<prometheus::core::AtomicU64>,
+                lag_events_counter: prometheus::core::GenericCounter<prometheus::core::AtomicU64>,
+                lag_messages_counter: prometheus::core::GenericCounter<prometheus::core::AtomicU64>,
+                _guard: ConnectionGuard,
+            }
+
+            let state = State {
+                broadcast: BroadcastStream::new(receiver),
+                sent_counter,
+                lag_events_counter,
+                lag_messages_counter,
+                _guard,
+            };
+
             // We need to send around 2048 bytes initially
-            let initial = once(Ok(Event::default().comment(" ".repeat(2048))));
-
-            let broadcast = BroadcastStream::new(receiver).filter_map(move |message| async move {
-                match message {
-                    Ok(data) => {
-                        // Track sent messages
-                        CHANNEL_MESSAGES_SENT_TOTAL.with_label_values(&[name]).inc();
-
-                        // Send the message as an SSE event
-                        Some(Ok::<Event, warp::Error>(Event::default().data(data)))
-                    }
-                    Err(BroadcastStreamRecvError::Lagged(n)) => {
-                        // Client has lagged behind
-                        tracing::warn!("client lagged by {} messages", n);
-
-                        // Track lag events and messages
-                        CHANNEL_CLIENT_LAG_EVENTS_TOTAL.with_label_values(&[name]).inc();
-                        CHANNEL_CLIENT_LAG_MESSAGES_TOTAL.with_label_values(&[name]).inc_by(n);
-
-                        None
-                    }
-                }
+            let initial = futures_util::stream::once(async {
+                Ok::<Event, warp::Error>(Event::default().comment(" ".repeat(2048)))
             });
 
-            // Track active connections with a guard
-            // The guard will be kept alive as long as the stream is active
-            let guard = ConnectionGuard::new(name, ConnectionActor::Subscriber);
+            let stream = futures_util::stream::unfold(state, |mut state| async move {
+                state.broadcast.next().await.map(|result| {
+                    let event = match result {
+                        Ok(data) => {
+                            // Track sent messages
+                            state.sent_counter.inc();
 
-            let stream = initial.chain(broadcast).inspect(move |_| {
-                let _ = &guard;
-            });
+                            // Send the message as an SSE event
+                            Some(Ok(Event::default().data(data)))
+                        }
+                        Err(BroadcastStreamRecvError::Lagged(n)) => {
+                            // Client has lagged behind
+                            tracing::warn!("client lagged by {} messages", n);
 
-            warp::sse::reply(warp::sse::keep_alive().stream(stream))
+                            // Track lag events and messages
+                            state.lag_events_counter.inc();
+                            state.lag_messages_counter.inc_by(n);
+
+                            // Skip this event
+                            None
+                        }
+                    };
+                    (event, state)
+                })
+            })
+            .filter_map(|opt| async move { opt });
+
+            warp::sse::reply(warp::sse::keep_alive().stream(initial.chain(stream)))
         })
     }
 }
@@ -102,8 +125,10 @@ impl<F: Filter<Extract = (), Error = warp::Rejection> + Clone + Send> StreamRece
 
             ws.on_upgrade(move |socket| async move {
                 // Track active WebSocket connections
-                // The guard will be dropped when the connection is closed
                 let _guard = ConnectionGuard::new(name, ConnectionActor::Publisher);
+
+                // Cache metric instance to avoid repeated label lookups
+                let received_counter = CHANNEL_MESSAGES_RECEIVED_TOTAL.with_label_values(&[name]);
 
                 let (_, mut rx) = socket.split();
 
@@ -119,7 +144,7 @@ impl<F: Filter<Extract = (), Error = warp::Rejection> + Clone + Send> StreamRece
                     };
 
                     // Track message received
-                    CHANNEL_MESSAGES_RECEIVED_TOTAL.with_label_values(&[name]).inc();
+                    received_counter.inc();
 
                     // Broadcast the received message
                     let _ = channel.send(data);
