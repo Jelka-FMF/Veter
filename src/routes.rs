@@ -33,7 +33,7 @@ pub fn base_routes()
 pub fn state_routes(
     token: Arc<String>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone + Send {
-    let (channel, _) = broadcast::channel::<String>(16);
+    let (channel, _) = broadcast::channel::<String>(10);
     let channel = Arc::new(channel);
 
     let transmitter = warp::path!("state" / "stream")
@@ -50,7 +50,7 @@ pub fn state_routes(
 pub fn interaction_routes(
     token: Arc<String>,
 ) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone + Send {
-    let (channel, _) = broadcast::channel::<String>(16);
+    let (channel, _) = broadcast::channel::<String>(10);
     let channel = Arc::new(channel);
 
     let transmitter = warp::path!("interaction" / "stream")

@@ -15,16 +15,18 @@ use prometheus::{
 // Publisher Metrics
 
 pub static PUBLISHERS_ACTIVE: LazyLock<IntGaugeVec> = LazyLock::new(|| {
-    register_int_gauge_vec!("veter_publishers_active", "Number of active publisher connections", &[
-        "channel"
-    ])
+    register_int_gauge_vec!(
+        "veter_publishers_active",
+        "Number of active publisher connections.",
+        &["channel"]
+    )
     .unwrap()
 });
 
 pub static PUBLISHERS_TOTAL: LazyLock<IntCounterVec> = LazyLock::new(|| {
     register_int_counter_vec!(
         "veter_publishers_total",
-        "Total number of publisher connection events",
+        "Total number of publisher connection events.",
         &["channel", "status"]
     )
     .unwrap()
@@ -35,7 +37,7 @@ pub static PUBLISHERS_TOTAL: LazyLock<IntCounterVec> = LazyLock::new(|| {
 pub static SUBSCRIBERS_ACTIVE: LazyLock<IntGaugeVec> = LazyLock::new(|| {
     register_int_gauge_vec!(
         "veter_subscribers_active",
-        "Number of active subscriber connections",
+        "Number of active subscriber connections.",
         &["channel"]
     )
     .unwrap()
@@ -44,7 +46,7 @@ pub static SUBSCRIBERS_ACTIVE: LazyLock<IntGaugeVec> = LazyLock::new(|| {
 pub static SUBSCRIBERS_TOTAL: LazyLock<IntCounterVec> = LazyLock::new(|| {
     register_int_counter_vec!(
         "veter_subscribers_total",
-        "Total number of subscriber connection events",
+        "Total number of subscriber connection events.",
         &["channel", "status"]
     )
     .unwrap()
@@ -55,7 +57,7 @@ pub static SUBSCRIBERS_TOTAL: LazyLock<IntCounterVec> = LazyLock::new(|| {
 pub static CHANNEL_MESSAGES_RECEIVED_TOTAL: LazyLock<IntCounterVec> = LazyLock::new(|| {
     register_int_counter_vec!(
         "veter_channel_messages_received_total",
-        "Total number of messages received from publishers",
+        "Total number of messages received from publishers.",
         &["channel"]
     )
     .unwrap()
@@ -64,7 +66,7 @@ pub static CHANNEL_MESSAGES_RECEIVED_TOTAL: LazyLock<IntCounterVec> = LazyLock::
 pub static CHANNEL_MESSAGES_SENT_TOTAL: LazyLock<IntCounterVec> = LazyLock::new(|| {
     register_int_counter_vec!(
         "veter_channel_messages_sent_total",
-        "Total number of messages sent to subscribers",
+        "Total number of messages sent to subscribers.",
         &["channel"]
     )
     .unwrap()
@@ -73,7 +75,7 @@ pub static CHANNEL_MESSAGES_SENT_TOTAL: LazyLock<IntCounterVec> = LazyLock::new(
 pub static CHANNEL_CLIENT_LAG_EVENTS_TOTAL: LazyLock<IntCounterVec> = LazyLock::new(|| {
     register_int_counter_vec!(
         "veter_channel_client_lag_events_total",
-        "Total number of client lag events",
+        "Total number of client lag events.",
         &["channel"]
     )
     .unwrap()
@@ -82,7 +84,7 @@ pub static CHANNEL_CLIENT_LAG_EVENTS_TOTAL: LazyLock<IntCounterVec> = LazyLock::
 pub static CHANNEL_CLIENT_LAG_MESSAGES_TOTAL: LazyLock<IntCounterVec> = LazyLock::new(|| {
     register_int_counter_vec!(
         "veter_channel_client_lag_messages_total",
-        "Total number of messages lost due to client lag",
+        "Total number of messages lost due to client lag.",
         &["channel"]
     )
     .unwrap()
@@ -91,7 +93,7 @@ pub static CHANNEL_CLIENT_LAG_MESSAGES_TOTAL: LazyLock<IntCounterVec> = LazyLock
 // Application Metrics
 
 pub static APP_UPTIME_SECONDS: LazyLock<Gauge> = LazyLock::new(|| {
-    register_gauge!("veter_app_uptime_seconds", "Application uptime in seconds").unwrap()
+    register_gauge!("veter_app_uptime_seconds", "Application uptime in seconds.").unwrap()
 });
 
 /// Application start time

@@ -53,6 +53,7 @@ impl<F: Filter<Extract = (), Error = warp::Rejection> + Clone + Send> StreamTran
             let lag_messages_counter = CHANNEL_CLIENT_LAG_MESSAGES_TOTAL.with_label_values(&[name]);
 
             // Bundle state for the stream processor
+            #[derive(Debug)]
             struct State {
                 broadcast: BroadcastStream<String>,
                 sent_counter: prometheus::core::GenericCounter<prometheus::core::AtomicU64>,
