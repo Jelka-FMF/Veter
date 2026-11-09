@@ -28,6 +28,30 @@ async fn main() {
         .recover(rejection_handler)
         .with(warp::trace::request());
 
+    let server = warp::serve(routes);
+
+    #[cfg(not(unix))]
+    if config.socket.is_some() {
+        panic!("UNIX sockets not supported on this platform");
+    }
+
+    #[cfg(unix)]
+    if let Some(socket) = config.socket.as_ref() {
+        let listener = tokio::net::UnixListener::bind(socket);
+        let listener = listener.unwrap_or_else(|error| {
+            panic!("failed to bind to UNIX socket {}: {error}", socket.display());
+        });
+
+        tracing::info!("starting server on UNIX socket {}", socket.display());
+        server.incoming(listener).run().await;
+        return;
+    }
+
+    let listener = tokio::net::TcpListener::bind((config.address, config.port)).await;
+    let listener = listener.unwrap_or_else(|error| {
+        panic!("failed to bind to {}:{}: {error}", config.address, config.port);
+    });
+
     tracing::info!("starting server on {}:{}", config.address, config.port);
-    warp::serve(routes).run((config.address, config.port)).await;
+    server.incoming(listener).run().await;
 }

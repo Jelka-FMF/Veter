@@ -1,4 +1,5 @@
 use std::net::{IpAddr, Ipv4Addr};
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use config::Environment;
@@ -6,12 +7,18 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Config {
+    /// TCP address to listen on (default: `0.0.0.0`).
     #[serde(default = "default_address")]
     pub address: IpAddr,
 
+    /// TCP port to listen on (default: `3030`).
     #[serde(default = "default_port")]
     pub port: u16,
 
+    /// Path of the UNIX socket to listen on (default: use TCP).
+    pub socket: Option<PathBuf>,
+
+    /// Token used to authenticate clients.
     pub token: Arc<String>,
 }
 
