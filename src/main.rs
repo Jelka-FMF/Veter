@@ -36,13 +36,32 @@ async fn main() {
     }
 
     #[cfg(unix)]
-    if let Some(socket) = config.socket.as_ref() {
-        let listener = tokio::net::UnixListener::bind(socket);
+    if let Some(socket) = config.socket.as_deref() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let (path, mode) = socket.rsplit_once('|').unwrap_or((socket, ""));
+
+        if let Err(error) = tokio::net::UnixStream::connect(path).await {
+            if error.kind() == std::io::ErrorKind::ConnectionRefused {
+                std::fs::remove_file(path).unwrap_or_else(|error| {
+                    panic!("failed to remove stale UNIX socket {path}: {error}");
+                });
+            }
+        }
+
+        let listener = tokio::net::UnixListener::bind(path);
         let listener = listener.unwrap_or_else(|error| {
-            panic!("failed to bind to UNIX socket {}: {error}", socket.display());
+            panic!("failed to bind to UNIX socket {path}: {error}");
         });
 
-        tracing::info!("starting server on UNIX socket {}", socket.display());
+        if !mode.is_empty() {
+            let mode = u32::from_str_radix(mode, 8)
+                .unwrap_or_else(|error| panic!("failed to parse mode {mode}: {error}"));
+            std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode))
+                .unwrap_or_else(|error| panic!("failed to configure UNIX socket {mode}: {error}"));
+        }
+
+        tracing::info!("starting server on UNIX socket {path}");
         server.incoming(listener).run().await;
         return;
     }

@@ -1,5 +1,4 @@
 use std::net::{IpAddr, Ipv4Addr};
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use config::Environment;
@@ -15,8 +14,8 @@ pub struct Config {
     #[serde(default = "default_port")]
     pub port: u16,
 
-    /// Path of the UNIX socket to listen on (default: use TCP).
-    pub socket: Option<PathBuf>,
+    /// Path of the UNIX socket to listen on, optionally with its file mode (default: use TCP).
+    pub socket: Option<String>,
 
     /// Token used to authenticate clients.
     pub token: Arc<String>,
